@@ -23,6 +23,8 @@ typedef void OnRouteSelectionCallback(DirectionsRoute directionsRoute);
 typedef void OnNavigationProgressChangeCallback(
     double distanceRemaining, LegStep upComingStep);
 
+typedef void OnOffRouteCallback();
+
 /// Controller for a single MapboxMap instance running on the host platform.
 ///
 /// Change listeners are notified upon changes to any of
@@ -49,6 +51,7 @@ class MapboxMapController extends ChangeNotifier {
       this.onMapIdle,
       this.onNavigation,
       this.onNavigationProgressChange,
+      this.onOffRoute,
       this.onRouteSelection})
       : assert(_id != null) {
     _cameraPosition = initialCameraPosition;
@@ -149,6 +152,12 @@ class MapboxMapController extends ChangeNotifier {
       }
     });
 
+    MapboxGlPlatform.getInstance(_id).onOffRoutePlatform.add((_) {
+      if (onOffRoute != null) {
+        onOffRoute();
+      }
+    });
+
     MapboxGlPlatform.getInstance(_id)
         .onNavigationProgressChangePlatform
         .add((dict) {
@@ -177,6 +186,7 @@ class MapboxMapController extends ChangeNotifier {
       OnCameraIdleCallback onCameraIdle,
       OnMapIdleCallback onMapIdle,
       OnNavigationCallback onNavigation,
+      OnOffRouteCallback onOffRoute,
       OnNavigationProgressChangeCallback onNavigationProgressChange,
       OnRouteSelectionCallback onRouteSelection}) async {
     assert(id != null);
@@ -190,6 +200,7 @@ class MapboxMapController extends ChangeNotifier {
         onCameraIdle: onCameraIdle,
         onMapIdle: onMapIdle,
         onNavigation: onNavigation,
+        onOffRoute: onOffRoute,
         onNavigationProgressChange: onNavigationProgressChange,
         onRouteSelection: onRouteSelection);
   }
@@ -207,6 +218,8 @@ class MapboxMapController extends ChangeNotifier {
   final OnMapIdleCallback onMapIdle;
 
   final OnNavigationCallback onNavigation;
+
+  final OnOffRouteCallback onOffRoute;
 
   final OnNavigationProgressChangeCallback onNavigationProgressChange;
 

@@ -77,6 +77,9 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
       case 'navigation#onNavigation':
         onNavigationPlatform(call.arguments['running']);
         break;
+      case 'navigation#onOffRoute':
+        onOffRoutePlatform(null);
+        break;
       case 'navigation#onNavigationProgressChange':
         final double distanceRemaining = call.arguments['distanceRemaining'];
         final LegStep upComingStep =

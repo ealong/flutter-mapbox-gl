@@ -36,6 +36,7 @@ class MapboxMap extends StatefulWidget {
     this.onCameraIdle,
     this.onMapIdle,
     this.onNavigation,
+    this.onOffRoute,
     this.onNavigationProgressChange,
     this.onRouteSelection,
   }) : assert(initialCameraPosition != null);
@@ -168,6 +169,7 @@ class MapboxMap extends StatefulWidget {
   final OnMapIdleCallback onMapIdle;
 
   final OnNavigationCallback onNavigation;
+  final OnOffRouteCallback onOffRoute;
   final OnNavigationProgressChangeCallback onNavigationProgressChange;
 
   final OnRouteSelectionCallback onRouteSelection;
@@ -231,6 +233,7 @@ class _MapboxMapState extends State<MapboxMap> {
         onMapIdle: widget.onMapIdle,
         onNavigation: widget.onNavigation,
         onNavigationProgressChange: widget.onNavigationProgressChange,
+        onOffRoute: widget.onOffRoute,
         onRouteSelection: widget.onRouteSelection);
     _controller.complete(controller);
     if (widget.onMapCreated != null) {

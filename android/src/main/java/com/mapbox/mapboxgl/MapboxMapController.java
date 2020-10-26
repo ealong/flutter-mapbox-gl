@@ -434,7 +434,8 @@ final class MapboxMapController
           if (currentStepProgress != null){
             LegStep upComingStep = routeProgress.currentLegProgress().upComingStep();
             if (upComingStep != null) {
-              final Map<String, Object> arguments = new HashMap<>(2);
+              final Map<String, Object> arguments = new HashMap<>(3);
+              arguments.put("durationRemaining", currentStepProgress.durationRemaining());
               arguments.put("distanceRemaining", currentStepProgress.distanceRemaining());
               arguments.put("upComingStep", upComingStep.toJson());
               methodChannel.invokeMethod("navigation#onNavigationProgressChange", arguments);
@@ -442,26 +443,10 @@ final class MapboxMapController
           }
         }
       });
-//      mapboxNavigation.addOffRouteListener(location -> {
-//        if (!isRouteRefreshing) {
-//          isRouteRefreshing = true;
-//          Point destination = directionsRoute.routeOptions().coordinates().get(directionsRoute.routeOptions().coordinates().size() - 1);
-//          getMapboxAPIRoute(new LatLng[]{new LatLng(location), new LatLng(destination.latitude(), destination.longitude())}, directionsResponse -> {
-//            isRouteRefreshing = false;
-//            if (directionsResponse.routes().isEmpty() == false) {
-//              directionsRoute = directionsResponse.routes().get(0);
-//              if (directionsRoutes != null) {
-//                directionsRoutes.clear();
-//              } else {
-//                directionsRoutes = new ArrayList<>();
-//              }
-//              directionsRoutes.add(directionsRoute);
-//              navigationMapRoute.addRoute(directionsRoute);
-//              mapboxNavigation.startNavigation(directionsRoute);
-//            }
-//          });
-//        }
-//      });
+      mapboxNavigation.addOffRouteListener(location -> {
+        final Map<String, Object> arguments = new HashMap<>(0);
+        methodChannel.invokeMethod("navigation#onOffRoute", arguments);
+      });
       mapboxNavigation.addNavigationEventListener(running -> {
         if (running) {
           final Map<String, Object> arguments = new HashMap<>(1);

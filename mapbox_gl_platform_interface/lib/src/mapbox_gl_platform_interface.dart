@@ -71,6 +71,9 @@ abstract class MapboxGlPlatform {
       onNavigationProgressChangePlatform =
       ArgumentCallbacks<Map<String, dynamic>>();
 
+  final ArgumentCallbacks<Map<String, dynamic>> onOffRoutePlatform =
+      ArgumentCallbacks<Map<String, dynamic>>();
+
   Future<void> initPlatform(int id) async {
     throw UnimplementedError('initPlatform() has not been implemented.');
   }
