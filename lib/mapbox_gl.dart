@@ -18,6 +18,7 @@ export 'package:mapbox_gl_platform_interface/mapbox_gl_platform_interface.dart'
     show
         LatLng,
         LatLngBounds,
+        LatLngQuad,
         CameraPosition,
         CameraUpdate,
         ArgumentCallbacks,
@@ -45,8 +46,10 @@ export 'package:mapbox_gl_platform_interface/mapbox_gl_platform_interface.dart'
 
         DirectionsRoute,
         DirectionsWaypoint,
-        DirectionsResponse;
-
+        DirectionsResponse,
+        
+        Fill,
+        FillOptions;
 
 part 'src/controller.dart';
 part 'src/mapbox_map.dart';

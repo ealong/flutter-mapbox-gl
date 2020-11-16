@@ -637,3 +637,74 @@ class EnumValues<T> {
     return reverseMap;
   }
 }
+
+class DirectionsRouteOptions {
+  /// Creates a set of line configuration options.
+  ///
+  /// By default, every non-specified field is null, meaning no desire to change
+  /// line defaults or current configuration.
+  const DirectionsRouteOptions({
+    this.profile,
+    this.steps,
+    this.alternatives,
+    this.enableRefresh,
+    this.overview,
+    this.annotations,
+    this.bannerInstructions,
+    this.voiceInstructions,
+    this.voiceUnits,
+    this.geometries,
+  });
+
+  final String profile;
+  final bool steps;
+  final bool alternatives;
+  final bool enableRefresh;
+  final String overview;
+  final String annotations;
+  final bool bannerInstructions;
+  final bool voiceInstructions;
+  final String voiceUnits;
+  final String geometries;
+
+  static const DirectionsRouteOptions defaultOptions = DirectionsRouteOptions();
+
+  DirectionsRouteOptions copyWith(DirectionsRouteOptions changes) {
+    if (changes == null) {
+      return this;
+    }
+    return DirectionsRouteOptions(
+      profile: changes.profile ?? profile,
+      steps: changes.steps ?? steps,
+      alternatives: changes.alternatives ?? alternatives,
+      enableRefresh: changes.enableRefresh ?? enableRefresh,
+      overview: changes.overview ?? overview,
+      annotations: changes.annotations ?? annotations,
+      bannerInstructions: changes.bannerInstructions ?? bannerInstructions,
+      voiceInstructions: changes.voiceInstructions ?? voiceInstructions,
+      voiceUnits: changes.voiceUnits ?? voiceUnits,
+      geometries: changes.geometries ?? geometries,
+    );
+  }
+
+  dynamic toJson() {
+    final Map<String, dynamic> json = <String, dynamic>{};
+
+    void addIfPresent(String fieldName, dynamic value) {
+      if (value != null) {
+        json[fieldName] = value;
+      }
+    }
+    addIfPresent('profile', profile);
+    addIfPresent('steps', steps);
+    addIfPresent('alternatives', alternatives);
+    addIfPresent('enableRefresh', enableRefresh);
+    addIfPresent('overview', overview);
+    addIfPresent('annotations', annotations);
+    addIfPresent('bannerInstructions', bannerInstructions);
+    addIfPresent('voiceInstructions', voiceInstructions);
+    addIfPresent('voiceUnits', voiceUnits);
+    addIfPresent('geometries', geometries);
+    return json;
+  }
+}

@@ -30,6 +30,7 @@ class MapboxMap extends StatefulWidget {
     this.compassViewMargins,
     this.attributionButtonMargins,
     this.onMapClick,
+    this.onUserLocationUpdated,
     this.onMapLongClick,
     this.onCameraTrackingDismissed,
     this.onCameraTrackingChanged,
@@ -41,15 +42,14 @@ class MapboxMap extends StatefulWidget {
     this.onRouteSelection,
   }) : assert(initialCameraPosition != null);
 
-
   /// If you want to use Mapbox hosted styles and map tiles, you need to provide a Mapbox access token.
   /// Obtain a free access token on [your Mapbox account page](https://www.mapbox.com/account/access-tokens/).
   /// The reccommended way is to use this parameter to set your access token, an alternative way to add your access tokens through external files is described in the plugin's wiki on Github.
-  /// 
+  ///
   /// Note: You should not use this parameter AND set the access token through external files at the same time, and you should use the same token throughout the entire app.
   final String accessToken;
 
-  /// Please note: you should only add annotations (e.g. symbols or circles) after `onStyleLoadedCallback` has been called. 
+  /// Please note: you should only add annotations (e.g. symbols or circles) after `onStyleLoadedCallback` has been called.
   final MapCreatedCallback onMapCreated;
 
   /// Called when the map style has been successfully loaded and the annotation managers have been enabled.
@@ -118,7 +118,7 @@ class MapboxMap extends StatefulWidget {
   /// when the map tries to turn on the My Location layer.
   final bool myLocationEnabled;
 
-  /// The mode used to let the map's camera follow the device's physical location. 
+  /// The mode used to let the map's camera follow the device's physical location.
   /// `myLocationEnabled` needs to be true for values other than `MyLocationTrackingMode.None` to work.
   final MyLocationTrackingMode myLocationTrackingMode;
 
@@ -151,9 +151,13 @@ class MapboxMap extends StatefulWidget {
   final OnMapClickCallback onMapClick;
   final OnMapClickCallback onMapLongClick;
 
+  /// While the `myLocationEnabled` property is set to `true`, this method is
+  /// called whenever a new location update is received by the map view.
+  final OnUserLocationUpdated onUserLocationUpdated;
+
   /// Called when the map's camera no longer follows the physical device location, e.g. because the user moved the map
   final OnCameraTrackingDismissedCallback onCameraTrackingDismissed;
-  
+
   /// Called when the location tracking mode changes
   final OnCameraTrackingChangedCallback onCameraTrackingChanged;
 
@@ -222,10 +226,16 @@ class _MapboxMapState extends State<MapboxMap> {
 
   Future<void> onPlatformViewCreated(int id) async {
     MapboxGlPlatform.addInstance(id, _mapboxGlPlatform);
-    final MapboxMapController controller = await MapboxMapController.init(
-        id, widget.initialCameraPosition,
-        onStyleLoadedCallback: widget.onStyleLoadedCallback,
+    final MapboxMapController controller = MapboxMapController.init(
+        id, widget.initialCameraPosition, onStyleLoadedCallback: () {
+      if (_controller.isCompleted) {
+        widget.onStyleLoadedCallback();
+      } else {
+        _controller.future.then((_) => widget.onStyleLoadedCallback());
+      }
+    },
         onMapClick: widget.onMapClick,
+        onUserLocationUpdated: widget.onUserLocationUpdated,
         onMapLongClick: widget.onMapLongClick,
         onCameraTrackingDismissed: widget.onCameraTrackingDismissed,
         onCameraTrackingChanged: widget.onCameraTrackingChanged,
@@ -235,6 +245,7 @@ class _MapboxMapState extends State<MapboxMap> {
         onNavigationProgressChange: widget.onNavigationProgressChange,
         onOffRoute: widget.onOffRoute,
         onRouteSelection: widget.onRouteSelection);
+    await MapboxMapController.initPlatform(id);
     _controller.complete(controller);
     if (widget.onMapCreated != null) {
       widget.onMapCreated(controller);

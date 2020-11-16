@@ -34,6 +34,9 @@ abstract class MapboxGlPlatform {
   final ArgumentCallbacks<String> onCircleTappedPlatform =
       ArgumentCallbacks<String>();
 
+  final ArgumentCallbacks<String> onFillTappedPlatform =
+      ArgumentCallbacks<String>();
+
   final ArgumentCallbacks<void> onCameraMoveStartedPlatform =
       ArgumentCallbacks<void>();
 
@@ -60,6 +63,9 @@ abstract class MapboxGlPlatform {
       ArgumentCallbacks<void>();
 
   final ArgumentCallbacks<void> onMapIdlePlatform = ArgumentCallbacks<void>();
+
+  final ArgumentCallbacks<UserLocation> onUserLocationUpdatedPlatform =
+      ArgumentCallbacks<UserLocation>();
 
   final ArgumentCallbacks<DirectionsRoute> onRouteSelectionPlatform =
       ArgumentCallbacks<DirectionsRoute>();
@@ -178,6 +184,18 @@ abstract class MapboxGlPlatform {
     throw UnimplementedError('removeCircle() has not been implemented.');
   }
 
+  Future<Fill> addFill(FillOptions options, [Map data]) async {
+    throw UnimplementedError('addFill() has not been implemented.');
+  }
+
+  Future<void> updateFill(Fill fill, FillOptions changes) async {
+    throw UnimplementedError('updateFill() has not been implemented.');
+  }
+
+  Future<void> removeFill(String fillId) async {
+    throw UnimplementedError('removeFill() has not been implemented.');
+  }
+
   Future<List> queryRenderedFeatures(
       Point<double> point, List<String> layerIds, List<Object> filter) async {
     throw UnimplementedError(
@@ -229,7 +247,8 @@ abstract class MapboxGlPlatform {
         'setSymbolTextIgnorePlacement() has not been implemented.');
   }
 
-  Future<DirectionsResponse> getMapboxAPIRoute(List<LatLng> latLngs) async {
+  Future<DirectionsResponse> getMapboxAPIRoute(
+      List<LatLng> latLngs, DirectionsRouteOptions options) async {
     throw UnimplementedError('getMapboxAPIRoute() has not been implemented.');
   }
 
@@ -263,11 +282,33 @@ abstract class MapboxGlPlatform {
     throw UnimplementedError('stopNavigation() has not been implemented.');
   }
 
+  Future<void> addImageSource(
+      String name, Uint8List bytes, LatLngQuad coordinates) async {
+    throw UnimplementedError('addImageSource() has not been implemented.');
+  }
+
+  Future<void> removeImageSource(String name) async {
+    throw UnimplementedError('removeImageSource() has not been implemented.');
+  }
+
+  Future<void> addLayer(String name, String sourceId) async {
+    throw UnimplementedError('addLayer() has not been implemented.');
+  }
+
+  Future<void> removeLayer(String name) async {
+    throw UnimplementedError('removeLayer() has not been implemented.');
+  }
+
   Future<Point> toScreenLocation(LatLng latLng) async {
     throw UnimplementedError('toScreenLocation() has not been implemented.');
   }
 
   Future<LatLng> toLatLng(Point screenLocation) async {
     throw UnimplementedError('toLatLng() has not been implemented.');
+  }
+
+  Future<double> getMetersPerPixelAtLatitude(double latitude) async {
+    throw UnimplementedError(
+        'getMetersPerPixelAtLatitude() has not been implemented.');
   }
 }
