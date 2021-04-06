@@ -8,7 +8,7 @@ buildscript {
     }
 
     dependencies {
-        classpath 'com.android.tools.build:gradle:3.2.1'
+        classpath 'com.android.tools.build:gradle:3.5.0'
     }
 }
 
@@ -41,7 +41,7 @@ android {
         implementation "com.mapbox.mapboxsdk:mapbox-android-sdk:9.2.0"
         implementation "com.mapbox.mapboxsdk:mapbox-android-plugin-annotation-v9:0.9.0"
         implementation "com.mapbox.mapboxsdk:mapbox-android-plugin-localization-v9:0.12.0"
-
+        implementation 'com.mapbox.mapboxsdk:mapbox-android-plugin-offline-v9:0.7.0'
         implementation ('com.mapbox.mapboxsdk:mapbox-android-navigation:0.42.6') {
             exclude group: 'com.mapbox.mapboxsdk', module:'mapbox-android-plugin-annotation-v8'
         }

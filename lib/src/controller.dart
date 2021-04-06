@@ -20,8 +20,6 @@ typedef void OnMapIdleCallback();
 
 typedef void OnNavigationCallback(bool running);
 
-typedef void OnRouteSelectionCallback(DirectionsRoute directionsRoute);
-
 typedef void OnNavigationProgressChangeCallback(
     double distanceRemaining, LegStep upComingStep);
 
@@ -54,7 +52,6 @@ class MapboxMapController extends ChangeNotifier {
       this.onNavigation,
       this.onNavigationProgressChange,
       this.onOffRoute,
-      this.onRouteSelection,
       this.onUserLocationUpdated})
       : assert(_id != null) {
     _cameraPosition = initialCameraPosition;
@@ -108,8 +105,13 @@ class MapboxMapController extends ChangeNotifier {
       notifyListeners();
     });
 
-    MapboxGlPlatform.getInstance(_id).onCameraIdlePlatform.add((_) {
+    MapboxGlPlatform.getInstance(_id)
+        .onCameraIdlePlatform
+        .add((cameraPosition) {
       _isCameraMoving = false;
+      if (cameraPosition != null) {
+        _cameraPosition = cameraPosition;
+      }
       if (onCameraIdle != null) {
         onCameraIdle();
       }
@@ -178,14 +180,6 @@ class MapboxMapController extends ChangeNotifier {
     });
 
     MapboxGlPlatform.getInstance(_id)
-        .onRouteSelectionPlatform
-        .add((directionsRoute) {
-      if (onRouteSelection != null) {
-        onRouteSelection(directionsRoute);
-      }
-    });
-
-    MapboxGlPlatform.getInstance(_id)
         .onUserLocationUpdatedPlatform
         .add((location) {
       onUserLocationUpdated?.call(location);
@@ -203,8 +197,7 @@ class MapboxMapController extends ChangeNotifier {
       OnMapIdleCallback onMapIdle,
       OnNavigationCallback onNavigation,
       OnOffRouteCallback onOffRoute,
-      OnNavigationProgressChangeCallback onNavigationProgressChange,
-      OnRouteSelectionCallback onRouteSelection}) {
+      OnNavigationProgressChangeCallback onNavigationProgressChange}) {
     assert(id != null);
     return MapboxMapController._(id, initialCameraPosition,
         onStyleLoadedCallback: onStyleLoadedCallback,
@@ -217,8 +210,7 @@ class MapboxMapController extends ChangeNotifier {
         onMapIdle: onMapIdle,
         onNavigation: onNavigation,
         onOffRoute: onOffRoute,
-        onNavigationProgressChange: onNavigationProgressChange,
-        onRouteSelection: onRouteSelection);
+        onNavigationProgressChange: onNavigationProgressChange);
   }
 
   static Future<void> initPlatform(int id) async {
@@ -245,8 +237,6 @@ class MapboxMapController extends ChangeNotifier {
   final OnOffRouteCallback onOffRoute;
 
   final OnNavigationProgressChangeCallback onNavigationProgressChange;
-
-  final OnRouteSelectionCallback onRouteSelection;
 
   /// Callbacks to receive tap events for symbols placed on this map.
   final ArgumentCallbacks<Symbol> onSymbolTapped = ArgumentCallbacks<Symbol>();
@@ -385,12 +375,6 @@ class MapboxMapController extends ChangeNotifier {
   /// platform side.
   Future<void> setMapLanguage(String language) async {
     return MapboxGlPlatform.getInstance(_id).setMapLanguage(language);
-  }
-
-  /// Update map padding when fitbounds
-  Future<void> setMapPadding(int left, int top, int right, int bottom) async {
-    return MapboxGlPlatform.getInstance(_id)
-        .setMapPadding(left, top, right, bottom);
   }
 
   /// Enables or disables the collection of anonymized telemetry data.
@@ -689,7 +673,7 @@ class MapboxMapController extends ChangeNotifier {
     final FillOptions effectiveOptions =
         FillOptions.defaultOptions.copyWith(options);
     final fill =
-        await MapboxGlPlatform.getInstance(_id).addFill(effectiveOptions);
+        await MapboxGlPlatform.getInstance(_id).addFill(effectiveOptions, data);
     _fills[fill.id] = fill;
     notifyListeners();
     return fill;
@@ -708,6 +692,21 @@ class MapboxMapController extends ChangeNotifier {
     assert(changes != null);
     await MapboxGlPlatform.getInstance(_id).updateFill(fill, changes);
     fill.options = fill.options.copyWith(changes);
+    notifyListeners();
+  }
+
+  /// Removes all [fill] from the map.
+  ///
+  /// Change listeners are notified once all fills have been removed on the
+  /// platform side.
+  ///
+  /// The returned [Future] completes once listeners have been notified.
+  Future<void> clearFills() async {
+    assert(_fills != null);
+    final List<String> fillIds = List<String>.from(_fills.keys);
+    for (String id in fillIds) {
+      await _removeFill(id);
+    }
     notifyListeners();
   }
 
@@ -825,68 +824,34 @@ class MapboxMapController extends ChangeNotifier {
         .setSymbolTextIgnorePlacement(enable);
   }
 
-  /// get Route
-  Future<DirectionsResponse> getMapboxAPIRoute(
-      List<LatLng> latLngs, DirectionsRouteOptions options) async {
-    return await MapboxGlPlatform.getInstance(_id)
-        .getMapboxAPIRoute(latLngs, options);
-  }
-
-  Future<void> addRoutesToMap(List<DirectionsRoute> routes) async {
-    return await MapboxGlPlatform.getInstance(_id).addRoutesToMap(routes);
-  }
-
-  Future<void> clearDirectionsRoutes() async {
-    return await MapboxGlPlatform.getInstance(_id).clearDirectionsRoutes();
-  }
-
-  /// Select Route
-  Future<void> selectRoute(DirectionsRoute directionsRoute) async {
-    await MapboxGlPlatform.getInstance(_id).selectRoute(directionsRoute);
-  }
-
-  /// Fit Route
-  Future<void> fitRoute(DirectionsRoute directionsRoute) async {
-    await MapboxGlPlatform.getInstance(_id).fitRoute(directionsRoute);
-  }
-
-  /// Fit Route At Index
-  Future<void> fitRouteAt(int index) async {
-    await MapboxGlPlatform.getInstance(_id).fitRouteAt(index);
-  }
-
-  /// Start navigation
-  Future<void> startNavigation(
-      DirectionsRoute directionsRoute, bool isSimulation) async {
-    await MapboxGlPlatform.getInstance(_id)
-        .startNavigation(directionsRoute, isSimulation);
-  }
-
-  /// Stop navigation
-  Future<void> stopNavigation() async {
-    await MapboxGlPlatform.getInstance(_id).stopNavigation();
-  }
-
-  /// Adds an image source to the style currently displayed in the map, so that it can later be referred to by the provided name.
+  /// Adds an image source to the style currently displayed in the map, so that it can later be referred to by the provided id.
   Future<void> addImageSource(
-      String name, Uint8List bytes, LatLngQuad coordinates) {
+      String imageSourceId, Uint8List bytes, LatLngQuad coordinates) {
     return MapboxGlPlatform.getInstance(_id)
-        .addImageSource(name, bytes, coordinates);
+        .addImageSource(imageSourceId, bytes, coordinates);
   }
 
-  /// Removes previously added image source by name
-  Future<void> removeImageSource(String name) {
-    return MapboxGlPlatform.getInstance(_id).removeImageSource(name);
+  /// Removes previously added image source by id
+  Future<void> removeImageSource(String imageSourceId) {
+    return MapboxGlPlatform.getInstance(_id).removeImageSource(imageSourceId);
   }
 
-  /// Adds layer with name
-  Future<void> addLayer(String name, String sourceId) {
-    return MapboxGlPlatform.getInstance(_id).addLayer(name, sourceId);
+  /// Adds a Mapbox style layer to the map's style at render time.
+  Future<void> addLayer(String imageLayerId, String imageSourceId) {
+    return MapboxGlPlatform.getInstance(_id)
+        .addLayer(imageLayerId, imageSourceId);
   }
 
-  /// Removes layer by name
-  Future<void> removeLayer(String name) {
-    return MapboxGlPlatform.getInstance(_id).removeLayer(name);
+  /// Adds a Mapbox style layer below the layer provided with belowLayerId to the map's style at render time,
+  Future<void> addLayerBelow(
+      String imageLayerId, String imageSourceId, String belowLayerId) {
+    return MapboxGlPlatform.getInstance(_id)
+        .addLayerBelow(imageLayerId, imageSourceId, belowLayerId);
+  }
+
+  /// Removes a Mapbox style layer
+  Future<void> removeLayer(String imageLayerId) {
+    return MapboxGlPlatform.getInstance(_id).removeLayer(imageLayerId);
   }
 
   /// Returns the point on the screen that corresponds to a geographical coordinate ([latLng]). The screen location is in screen pixels (not display pixels) relative to the top left of the map (not of the whole screen)
@@ -899,6 +864,10 @@ class MapboxMapController extends ChangeNotifier {
     return MapboxGlPlatform.getInstance(_id).toScreenLocation(latLng);
   }
 
+  Future<List<Point>> toScreenLocationBatch(Iterable<LatLng> latLngs) async {
+    return MapboxGlPlatform.getInstance(_id).toScreenLocationBatch(latLngs);
+  }
+
   /// Returns the geographic location (as [LatLng]) that corresponds to a point on the screen. The screen location is specified in screen pixels (not display pixels) relative to the top left of the map (not the top left of the whole screen).
   Future<LatLng> toLatLng(Point screenLocation) async {
     return MapboxGlPlatform.getInstance(_id).toLatLng(screenLocation);
@@ -909,5 +878,24 @@ class MapboxMapController extends ChangeNotifier {
   Future<double> getMetersPerPixelAtLatitude(double latitude) async {
     return MapboxGlPlatform.getInstance(_id)
         .getMetersPerPixelAtLatitude(latitude);
+  }
+
+  /// get Route
+  Future<DirectionsResponse> getMapboxAPIRoute(
+      List<LatLng> latLngs, DirectionsRouteOptions options) async {
+    return await MapboxGlPlatform.getInstance(_id)
+        .getMapboxAPIRoute(latLngs, options);
+  }
+
+  /// Start navigation
+  Future<void> startNavigation(
+      DirectionsRoute directionsRoute, bool isSimulation) async {
+    await MapboxGlPlatform.getInstance(_id)
+        .startNavigation(directionsRoute, isSimulation);
+  }
+
+  /// Stop navigation
+  Future<void> stopNavigation() async {
+    await MapboxGlPlatform.getInstance(_id).stopNavigation();
   }
 }

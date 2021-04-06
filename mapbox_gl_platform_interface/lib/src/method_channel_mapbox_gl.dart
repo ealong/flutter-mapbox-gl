@@ -44,7 +44,9 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
         onCameraMovePlatform(cameraPosition);
         break;
       case 'camera#onIdle':
-        onCameraIdlePlatform(null);
+        final CameraPosition cameraPosition =
+            CameraPosition.fromMap(call.arguments['position']);
+        onCameraIdlePlatform(cameraPosition);
         break;
       case 'map#onStyleLoaded':
         onMapStyleLoadedPlatform(null);
@@ -76,10 +78,6 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
       case 'map#onIdle':
         onMapIdlePlatform(null);
         break;
-      case 'navigation#onRouteSelection':
-        onRouteSelectionPlatform(DirectionsRoute.fromJson(
-            json.decode(call.arguments['directionsRoute'])));
-        break;
       case 'navigation#onNavigation':
         onNavigationPlatform(call.arguments['running']);
         break;
@@ -97,6 +95,7 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
         break;
       case 'map#onUserLocationUpdated':
         final dynamic userLocation = call.arguments['userLocation'];
+        final dynamic heading = call.arguments['heading'];
         if (onUserLocationUpdatedPlatform != null) {
           onUserLocationUpdatedPlatform(UserLocation(
               position: LatLng(
@@ -106,6 +105,18 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
               speed: userLocation['speed'],
               horizontalAccuracy: userLocation['horizontalAccuracy'],
               verticalAccuracy: userLocation['verticalAccuracy'],
+              heading: heading == null
+                  ? null
+                  : UserHeading(
+                      magneticHeading: heading['magneticHeading'],
+                      trueHeading: heading['trueHeading'],
+                      headingAccuracy: heading['headingAccuracy'],
+                      x: heading['x'],
+                      y: heading['y'],
+                      z: heading['x'],
+                      timestamp: DateTime.fromMillisecondsSinceEpoch(
+                          heading['timestamp']),
+                    ),
               timestamp: DateTime.fromMillisecondsSinceEpoch(
                   userLocation['timestamp'])));
         }
@@ -206,16 +217,6 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   Future<void> setMapLanguage(String language) async {
     await _channel.invokeMethod('map#setMapLanguage', <String, dynamic>{
       'language': language,
-    });
-  }
-
-  @override
-  Future<void> setMapPadding(int left, int top, int right, int bottom) async {
-    await _channel.invokeMethod('map#setMapPadding', <String, dynamic>{
-      'left': left,
-      'top': top,
-      'right': right,
-      'bottom': bottom
     });
   }
 
@@ -434,11 +435,11 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
       final Map<Object, Object> reply = await _channel.invokeMethod(
           'locationComponent#getLastLocation', null);
       double latitude = 0.0, longitude = 0.0;
-      if (reply.containsKey("latitude") && reply["latitude"] != null) {
-        latitude = double.parse(reply["latitude"].toString());
+      if (reply.containsKey('latitude') && reply['latitude'] != null) {
+        latitude = double.parse(reply['latitude'].toString());
       }
-      if (reply.containsKey("longitude") && reply["longitude"] != null) {
-        longitude = double.parse(reply["longitude"].toString());
+      if (reply.containsKey('longitude') && reply['longitude'] != null) {
+        longitude = double.parse(reply['longitude'].toString());
       }
       return LatLng(latitude, longitude);
     } on PlatformException catch (e) {
@@ -452,12 +453,12 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
       final Map<Object, Object> reply =
           await _channel.invokeMethod('map#getVisibleRegion', null);
       LatLng southwest, northeast;
-      if (reply.containsKey("sw")) {
-        List<dynamic> coordinates = reply["sw"];
+      if (reply.containsKey('sw')) {
+        List<dynamic> coordinates = reply['sw'];
         southwest = LatLng(coordinates[0], coordinates[1]);
       }
-      if (reply.containsKey("ne")) {
-        List<dynamic> coordinates = reply["ne"];
+      if (reply.containsKey('ne')) {
+        List<dynamic> coordinates = reply['ne'];
         northeast = LatLng(coordinates[0], coordinates[1]);
       }
       return LatLngBounds(southwest: southwest, northeast: northeast);
@@ -471,10 +472,10 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
       [bool sdf = false]) async {
     try {
       return await _channel.invokeMethod('style#addImage', <String, Object>{
-        "name": name,
-        "bytes": bytes,
-        "length": bytes.length,
-        "sdf": sdf
+        'name': name,
+        'bytes': bytes,
+        'length': bytes.length,
+        'sdf': sdf
       });
     } on PlatformException catch (e) {
       return new Future.error(e);
@@ -530,43 +531,11 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<DirectionsResponse> getMapboxAPIRoute(
-      List<LatLng> latLngs, DirectionsRouteOptions options) async {
-    try {
-      Map directionsResponseMap = await _channel.invokeMethod(
-          'navigation#getMapboxAPIRoute', <String, dynamic>{
-        'coordinates': latLngs.map((e) => e.toJson()).toList(),
-        'options': options.toJson()
-      });
-      return DirectionsResponse.fromJson(
-          json.decode(directionsResponseMap["directionsResponse"]));
-    } catch (e) {
-      debugPrint(e.toString());
-    }
-  }
-
-  Future<void> addImageSource(
-      String name, Uint8List bytes, LatLngQuad coordinates) async {
-    try {
-      return await _channel
-          .invokeMethod('style#addImageSource', <String, Object>{
-        "name": name,
-        "bytes": bytes,
-        "length": bytes.length,
-        "coordinates": coordinates.toList()
-      });
-    } on PlatformException catch (e) {
-      return new Future.error(e);
-    }
-  }
-
-  @override
   Future<Point> toScreenLocation(LatLng latLng) async {
     try {
       var screenPosMap =
           await _channel.invokeMethod('map#toScreenLocation', <String, dynamic>{
         'latitude': latLng.latitude,
-        'longitude': latLng.longitude,
       });
       return Point(screenPosMap['x'], screenPosMap['y']);
     } on PlatformException catch (e) {
@@ -575,40 +544,29 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<void> addRoutesToMap(List<DirectionsRoute> routes) async {
+  Future<List<Point>> toScreenLocationBatch(Iterable<LatLng> latLngs) async {
     try {
-      await _channel.invokeMethod(
-          'navigation#addRoutesToMap', <String, dynamic>{
-        'directionsRoutes': routes.map((e) => json.encode(e.toJson())).toList()
-      });
-    } on PlatformException catch (e) {
-      return new Future.error(e);
-    }
-  }
+      var coordinates = Float64List.fromList(
+          latLngs.map((e) => [e.latitude, e.longitude]).expand((e) => e).toList());
+      Float64List result = await _channel
+          .invokeMethod('map#toScreenLocationBatch', {"coordinates": coordinates});
 
-  Future<void> removeImageSource(String name) async {
-    try {
-      return await _channel.invokeMethod(
-          'style#removeImageSource', <String, Object>{"name": name});
-    } on PlatformException catch (e) {
-      return new Future.error(e);
-    }
-  }
+      var points = <Point>[];
+      for (int i = 0; i < result.length; i += 2) {
+        points.add(Point(result[i], result[i + 1]));
+      }
 
-  @override
-  Future<void> clearDirectionsRoutes() async {
-    try {
-      await _channel.invokeMethod('navigation#clearDirectionsRoutes');
+      return points;
     } on PlatformException catch (e) {
       return new Future.error(e);
     }
   }
 
   @override
-  Future<void> selectRoute(DirectionsRoute directionsRoute) async {
+  Future<void> removeImageSource(String imageSourceId) async {
     try {
-      await _channel.invokeMethod('navigation#selectRoute', <String, dynamic>{
-        'directionsRoute': json.encode(directionsRoute.toJson()),
+      return await _channel.invokeMethod('style#removeImageSource', <String, Object>{
+        'imageSourceId': imageSourceId
       });
     } on PlatformException catch (e) {
       return new Future.error(e);
@@ -616,10 +574,11 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<void> fitRoute(DirectionsRoute directionsRoute) async {
+  Future<void> addLayer(String imageLayerId, String imageSourceId) async {
     try {
-      await _channel.invokeMethod('navigation#fitRoute', <String, dynamic>{
-        'directionsRoute': json.encode(directionsRoute.toJson()),
+      return await _channel.invokeMethod('style#addLayer', <String, Object>{
+        'imageLayerId': imageLayerId,
+        'imageSourceId': imageSourceId
       });
     } on PlatformException catch (e) {
       return new Future.error(e);
@@ -627,20 +586,12 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<void> addLayer(String name, String sourceId) async {
+  Future<void> addLayerBelow(String imageLayerId, String imageSourceId, String belowLayerId) async {
     try {
-      return await _channel.invokeMethod('style#addLayer',
-          <String, Object>{"name": name, "sourceId": sourceId});
-    } on PlatformException catch (e) {
-      return new Future.error(e);
-    }
-  }
-
-  @override
-  Future<void> fitRouteAt(int index) async {
-    try {
-      await _channel.invokeMethod('navigation#fitRouteAt', <String, dynamic>{
-        'index': index,
+      return await _channel.invokeMethod('style#addLayerBelow', <String, Object>{
+        'imageLayerId': imageLayerId,
+        'imageSourceId': imageSourceId,
+        'belowLayerId': belowLayerId
       });
     } on PlatformException catch (e) {
       return new Future.error(e);
@@ -648,33 +599,11 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
   }
 
   @override
-  Future<void> removeLayer(String name) async {
+  Future<void> removeLayer(String imageLayerId) async {
     try {
-      return await _channel
-          .invokeMethod('style#removeLayer', <String, Object>{"name": name});
-    } on PlatformException catch (e) {
-      return new Future.error(e);
-    }
-  }
-
-  @override
-  Future<void> startNavigation(
-      DirectionsRoute directionsRoute, bool isSimulation) async {
-    try {
-      await _channel
-          .invokeMethod('navigation#startNavigation', <String, dynamic>{
-        'directionsRoute': json.encode(directionsRoute.toJson()),
-        'isSimulation': isSimulation
+      return await _channel.invokeMethod('style#removeLayer', <String, Object>{
+        'imageLayerId': imageLayerId
       });
-    } on PlatformException catch (e) {
-      return new Future.error(e);
-    }
-  }
-
-  @override
-  Future<void> stopNavigation() async {
-    try {
-      await _channel.invokeMethod('navigation#stopNavigation');
     } on PlatformException catch (e) {
       return new Future.error(e);
     }
@@ -702,6 +631,44 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
         'latitude': latitude,
       });
       return latLngMap['metersperpixel'];
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<DirectionsResponse> getMapboxAPIRoute(
+      List<LatLng> latLngs, DirectionsRouteOptions options) async {
+    try {
+      Map directionsResponseMap = await _channel.invokeMethod(
+          'navigation#getMapboxAPIRoute', <String, dynamic>{
+        'coordinates': latLngs.map((e) => e.toJson()).toList(),
+        'options': options.toJson()
+      });
+      return DirectionsResponse.fromJson(
+          json.decode(directionsResponseMap["directionsResponse"]));
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> startNavigation(
+    DirectionsRoute directionsRoute, bool isSimulation) async {
+    try {
+      await _channel
+          .invokeMethod('navigation#startNavigation', <String, dynamic>{
+        'directionsRoute': json.encode(directionsRoute.toJson()),
+        'isSimulation': isSimulation});
+    } on PlatformException catch (e) {
+      return new Future.error(e);
+    }
+  }
+
+  @override
+  Future<void> stopNavigation() async {
+    try {
+      await _channel.invokeMethod('navigation#stopNavigation');
     } on PlatformException catch (e) {
       return new Future.error(e);
     }

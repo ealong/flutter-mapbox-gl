@@ -43,8 +43,8 @@ abstract class MapboxGlPlatform {
   final ArgumentCallbacks<CameraPosition> onCameraMovePlatform =
       ArgumentCallbacks<CameraPosition>();
 
-  final ArgumentCallbacks<void> onCameraIdlePlatform =
-      ArgumentCallbacks<void>();
+  final ArgumentCallbacks<CameraPosition> onCameraIdlePlatform =
+      ArgumentCallbacks<CameraPosition>();
 
   final ArgumentCallbacks<void> onMapStyleLoadedPlatform =
       ArgumentCallbacks<void>();
@@ -66,9 +66,6 @@ abstract class MapboxGlPlatform {
 
   final ArgumentCallbacks<UserLocation> onUserLocationUpdatedPlatform =
       ArgumentCallbacks<UserLocation>();
-
-  final ArgumentCallbacks<DirectionsRoute> onRouteSelectionPlatform =
-      ArgumentCallbacks<DirectionsRoute>();
 
   final ArgumentCallbacks<bool> onNavigationPlatform =
       ArgumentCallbacks<bool>();
@@ -121,10 +118,6 @@ abstract class MapboxGlPlatform {
 
   Future<void> setMapLanguage(String language) async {
     throw UnimplementedError('setMapLanguage() has not been implemented.');
-  }
-
-  Future<void> setMapPadding(int left, int top, int right, int bottom) {
-    throw UnimplementedError('setMapPadding() set not been implemented.');
   }
 
   Future<void> setTelemetryEnabled(bool enabled) async {
@@ -247,60 +240,35 @@ abstract class MapboxGlPlatform {
         'setSymbolTextIgnorePlacement() has not been implemented.');
   }
 
-  Future<DirectionsResponse> getMapboxAPIRoute(
-      List<LatLng> latLngs, DirectionsRouteOptions options) async {
-    throw UnimplementedError('getMapboxAPIRoute() has not been implemented.');
-  }
-
-  Future<void> addRoutesToMap(List<DirectionsRoute> routes) async {
-    throw UnimplementedError('addRoutesToMap() has not been implemented.');
-  }
-
-  Future<void> clearDirectionsRoutes() async {
-    throw UnimplementedError(
-        'clearDirectionsRoutes() has not been implemented.');
-  }
-
-  Future<void> selectRoute(DirectionsRoute directionsRoute) async {
-    throw UnimplementedError('selectRoute() has not been implemented.');
-  }
-
-  Future<void> fitRoute(DirectionsRoute directionsRoute) async {
-    throw UnimplementedError('fitRoute() has not been implemented.');
-  }
-
-  Future<void> fitRouteAt(int index) async {
-    throw UnimplementedError('fitRouteAt() has not been implemented.');
-  }
-
-  Future<void> startNavigation(
-      DirectionsRoute directionsRoute, bool isSimulation) async {
-    throw UnimplementedError('startNavigation() has not been implemented.');
-  }
-
-  Future<void> stopNavigation() async {
-    throw UnimplementedError('stopNavigation() has not been implemented.');
-  }
-
   Future<void> addImageSource(
-      String name, Uint8List bytes, LatLngQuad coordinates) async {
+      String imageSourceId, Uint8List bytes, LatLngQuad coordinates) async {
     throw UnimplementedError('addImageSource() has not been implemented.');
   }
 
-  Future<void> removeImageSource(String name) async {
+  Future<void> removeImageSource(String imageSourceId) async {
     throw UnimplementedError('removeImageSource() has not been implemented.');
   }
 
-  Future<void> addLayer(String name, String sourceId) async {
+  Future<void> addLayer(String imageLayerId, String imageSourceId) async {
     throw UnimplementedError('addLayer() has not been implemented.');
   }
 
-  Future<void> removeLayer(String name) async {
+  Future<void> addLayerBelow(
+      String imageLayerId, String imageSourceId, String belowLayerId) async {
+    throw UnimplementedError('addLayerBelow() has not been implemented.');
+  }
+
+  Future<void> removeLayer(String imageLayerId) async {
     throw UnimplementedError('removeLayer() has not been implemented.');
   }
 
   Future<Point> toScreenLocation(LatLng latLng) async {
     throw UnimplementedError('toScreenLocation() has not been implemented.');
+  }
+
+  Future<List<Point>> toScreenLocationBatch(Iterable<LatLng> latLngs) async {
+    throw UnimplementedError(
+        'toScreenLocationList() has not been implemented.');
   }
 
   Future<LatLng> toLatLng(Point screenLocation) async {
@@ -310,5 +278,19 @@ abstract class MapboxGlPlatform {
   Future<double> getMetersPerPixelAtLatitude(double latitude) async {
     throw UnimplementedError(
         'getMetersPerPixelAtLatitude() has not been implemented.');
+  }
+
+  Future<DirectionsResponse> getMapboxAPIRoute(
+      List<LatLng> latLngs, DirectionsRouteOptions options) async {
+    throw UnimplementedError('getMapboxAPIRoute() has not been implemented.');
+  }
+
+  Future<void> startNavigation(
+      DirectionsRoute directionsRoute, bool isSimulation) async {
+    throw UnimplementedError('startNavigation() has not been implemented.');
+  }
+
+  Future<void> stopNavigation() async {
+    throw UnimplementedError('stopNavigation() has not been implemented.');
   }
 }
