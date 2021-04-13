@@ -87,18 +87,9 @@ import io.flutter.plugin.platform.PlatformView;
 
 import java.io.IOException;
 import java.io.InputStream;
-import java.lang.ref.WeakReference;
 
-import static com.mapbox.core.constants.Constants.PRECISION_6;
-
-import com.mapbox.mapboxsdk.plugins.localization.LocalizationPlugin;
-import com.mapbox.mapboxsdk.style.sources.GeoJsonSource;
-import com.mapbox.services.android.navigation.ui.v5.route.NavigationMapRoute;
-import com.mapbox.services.android.navigation.ui.v5.route.OnRouteSelectionChangeListener;
 import com.mapbox.services.android.navigation.v5.location.replay.ReplayRouteLocationEngine;
-import com.mapbox.services.android.navigation.v5.navigation.DirectionsRouteType;
 import com.mapbox.services.android.navigation.v5.navigation.MapboxNavigation;
-import com.mapbox.services.android.navigation.v5.navigation.RouteRefresh;
 import com.mapbox.services.android.navigation.v5.routeprogress.RouteStepProgress;
 
 import org.json.JSONArray;
@@ -144,12 +135,6 @@ final class MapboxMapController
   OnFillTappedListener,
   PlatformView {
 
-  static final String ROUTE_SOURCE_ID = "mapbox-navigation-route-source";
-  static final String ROUTE_LAYER_ID = "mapbox-navigation-route-layer";
-  static final String WAYPOINT_LAYER_ID = "mapbox-navigation-waypoint-layer";
-  static final String PRIMARY_ROUTE_PROPERTY_KEY = "primary-route";
-  static final String CONGESTION_KEY = "congestion";
-
   private static final String TAG = "MapboxMapController";
   private final int id;
   private final MethodChannel methodChannel;
@@ -181,22 +166,7 @@ final class MapboxMapController
   private List<String> annotationOrder;
   private List<String> annotationConsumeTapEvents;
 
-  private int[] mapPaddings = new int[]{0, 0, 0, 0};
-
-  private NavigationMapRoute navigationMapRoute;
-  private DirectionsRoute directionsRoute;
-
-  private ArrayList<DirectionsRoute> directionsRoutes = new ArrayList<>();
-
-  private RouteRefresh routeRefresh;
-
   private MapboxNavigation mapboxNavigation;
-
-  private boolean isRouteRefreshing;
-
-  private OnRouteSelectionChangeListener onRouteSelectionChangeListener;
-
-  CustomOnRouteFeaturesProcessedCallback customOnRouteFeaturesProcessedCallback;
 
   MapboxMapController(
     int id,
@@ -379,7 +349,7 @@ final class MapboxMapController
             throw new IllegalArgumentException("Unknown annotation type: " + annotationType + ", must be either 'fill', 'line', 'circle' or 'symbol'");
         }
       }
-      
+
       if (myLocationEnabled) {
         enableLocationComponent(style);
       }
@@ -389,24 +359,6 @@ final class MapboxMapController
       mapboxMap.addOnMapLongClickListener(MapboxMapController.this);
 	    localizationPlugin = new LocalizationPlugin(mapView, mapboxMap, style);
 
-      onRouteSelectionChangeListener = directionsRoute -> {
-        MapboxMapController.this.directionsRoute = directionsRoute;
-        final Map<String, Object> arguments = new HashMap<>(1);
-        arguments.put("directionsRoute", directionsRoute.toJson());
-        methodChannel.invokeMethod("navigation#onRouteSelection", arguments);
-      };
-
-      customOnRouteFeaturesProcessedCallback = (routeFeatureCollections, routeLineStrings) -> {
-        GeoJsonSource routeLineSource = (GeoJsonSource) mapboxMap.getStyle().getSource(ROUTE_SOURCE_ID);
-        if (routeLineSource != null) {
-          List<Feature> routeFeatures = new ArrayList<>();
-          for (int i = routeFeatureCollections.size() - 1; i >= 0; i--) {
-            routeFeatures.addAll(routeFeatureCollections.get(i).features());
-          }
-          routeLineSource.setGeoJson(FeatureCollection.fromFeatures(routeFeatures));
-        }
-      };
-
       mapboxNavigation = new MapboxNavigation(context, Mapbox.getAccessToken());
       mapboxNavigation.addProgressChangeListener((location, routeProgress) -> {
         locationComponent.forceLocationUpdate(location);
@@ -415,7 +367,8 @@ final class MapboxMapController
           if (currentStepProgress != null){
             LegStep upComingStep = routeProgress.currentLegProgress().upComingStep();
             if (upComingStep != null) {
-              final Map<String, Object> arguments = new HashMap<>(3);
+              final Map<String, Object> arguments = new HashMap<>(4);
+              arguments.put("directionsRoute", routeProgress.directionsRoute().toJson());
               arguments.put("durationRemaining", currentStepProgress.durationRemaining());
               arguments.put("distanceRemaining", currentStepProgress.distanceRemaining());
               arguments.put("upComingStep", upComingStep.toJson());
@@ -429,24 +382,10 @@ final class MapboxMapController
         methodChannel.invokeMethod("navigation#onOffRoute", arguments);
       });
       mapboxNavigation.addNavigationEventListener(running -> {
-        if (running) {
-          final Map<String, Object> arguments = new HashMap<>(1);
-          arguments.put("running", running);
-          methodChannel.invokeMethod("navigation#onNavigation", arguments);
-        } else {
-          if (locationComponent.getLocationEngine() instanceof ReplayRouteLocationEngine) {
-            locationComponent.setLocationEngine(locationEngine);
-          }
-          final Map<String, Object> arguments = new HashMap<>(1);
-          arguments.put("running", running);
-          methodChannel.invokeMethod("navigation#onNavigation", arguments);
-        }
+        final Map<String, Object> arguments = new HashMap<>(1);
+        arguments.put("running", running);
+        methodChannel.invokeMethod("navigation#onNavigation", arguments);
       });
-
-//      navigationMapRoute = new NavigationMapRoute(mapboxNavigation, mapView, mapboxMap);
-//      navigationMapRoute.setOnRouteSelectionChangeListener(onRouteSelectionChangeListener);
-
-      routeRefresh = new RouteRefresh(Mapbox.getAccessToken());
 
       methodChannel.invokeMethod("map#onStyleLoaded", null);
     }
@@ -1519,7 +1458,7 @@ final class MapboxMapController
       if (simulate) {
         ReplayRouteLocationEngine replayRouteLocationEngine = new ReplayRouteLocationEngine();
         replayRouteLocationEngine.assign(directionsRoute);
-        replayRouteLocationEngine.updateSpeed(120);
+        replayRouteLocationEngine.updateSpeed(60);
         mapboxNavigation.setLocationEngine(replayRouteLocationEngine);
         locationComponent.setLocationEngine(replayRouteLocationEngine);
       } else {
@@ -1532,107 +1471,7 @@ final class MapboxMapController
 
   public void stopNavigation() {
     mapboxNavigation.stopNavigation();
-  }
-
-  public void setCameraMode(int mode) {
-    if (locationComponent != null) {
-      locationComponent.setCameraMode(mode);
-    }
-  }
-
-  public void setTilt(double tilt, MapboxMap.CancelableCallback callback) {
-    mapboxMap.animateCamera(CameraUpdateFactory.newCameraPosition(new CameraPosition.Builder().tilt(tilt).build()), callback);
-  }
-
-  interface CustomOnRouteFeaturesProcessedCallback {
-    void onRouteFeaturesProcessed(List<FeatureCollection> routeFeatureCollections,
-                                  HashMap<LineString, DirectionsRoute> routeLineStrings);
-  }
-
-  class CustomFeatureProcessingTask extends AsyncTask<Void, Void, Void> {
-
-    private final int indexPrimary;
-    private final List<DirectionsRoute> routes;
-    private final List<FeatureCollection> routeFeatureCollections = new ArrayList<>();
-    private final WeakReference<CustomOnRouteFeaturesProcessedCallback> callbackWeakReference;
-    private final HashMap<LineString, DirectionsRoute> routeLineStrings = new HashMap<>();
-
-    CustomFeatureProcessingTask(List<DirectionsRoute> routes, int indexPrimary, CustomOnRouteFeaturesProcessedCallback callback) {
-      this.indexPrimary = indexPrimary;
-      this.routes = routes;
-      this.callbackWeakReference = new WeakReference<>(callback);
-    }
-
-    @Override
-    protected Void doInBackground(Void... voids) {
-      for (int i = 0; i < routes.size(); i++) {
-        DirectionsRoute route = routes.get(i);
-        boolean isPrimary = i == (indexPrimary < routes.size() ? indexPrimary : 0);
-        FeatureCollection routeFeatureCollection = createRouteFeatureCollection(route, isPrimary);
-        if (isPrimary) {
-          routeFeatureCollections.add(0, routeFeatureCollection);
-        } else {
-          routeFeatureCollections.add(routeFeatureCollection);
-        }
-      }
-      return null;
-    }
-
-    @Override
-    protected void onPostExecute(Void result) {
-      super.onPostExecute(result);
-      Runtime.getRuntime().gc();
-      CustomOnRouteFeaturesProcessedCallback callback = callbackWeakReference.get();
-      if (callback != null) {
-        callback.onRouteFeaturesProcessed(routeFeatureCollections, routeLineStrings);
-      }
-    }
-
-    private FeatureCollection createRouteFeatureCollection(DirectionsRoute route, boolean isPrimary) {
-      final List<Feature> features = new ArrayList<>();
-
-      LineString routeGeometry = LineString.fromPolyline(route.geometry(), PRECISION_6);
-      Feature routeFeature = Feature.fromGeometry(routeGeometry);
-      routeFeature.addBooleanProperty(PRIMARY_ROUTE_PROPERTY_KEY, isPrimary);
-      features.add(routeFeature);
-      routeLineStrings.put(routeGeometry, route);
-
-      // List<Feature> congestionFeatures = buildCongestionFeaturesFromRoute(route, routeGeometry, isPrimary);
-//            features.addAll(congestionFeatures);
-      return FeatureCollection.fromFeatures(features);
-    }
-
-    private List<Feature> buildCongestionFeaturesFromRoute(DirectionsRoute route, LineString lineString,
-                                                           boolean isPrimary) {
-      final List<Feature> features = new ArrayList<>();
-      for (RouteLeg leg : route.legs()) {
-        if (leg.annotation() != null && leg.annotation().congestion() != null) {
-          for (int i = 0; i < leg.annotation().congestion().size(); i++) {
-            // See https://github.com/mapbox/mapbox-navigation-android/issues/353
-            if (leg.annotation().congestion().size() + 1 <= lineString.coordinates().size()) {
-
-              List<Point> points = new ArrayList<>();
-              points.add(lineString.coordinates().get(i));
-              points.add(lineString.coordinates().get(i + 1));
-
-              LineString congestionLineString = LineString.fromLngLats(points);
-              Feature feature = Feature.fromGeometry(congestionLineString);
-              String congestionValue = leg.annotation().congestion().get(i);
-              feature.addStringProperty(CONGESTION_KEY, congestionValue);
-              feature.addBooleanProperty(PRIMARY_ROUTE_PROPERTY_KEY, isPrimary);
-              features.add(feature);
-            }
-          }
-        } else {
-          Feature feature = Feature.fromGeometry(lineString);
-          features.add(feature);
-        }
-      }
-      return features;
-    }
-  }
-
-  public interface DoneCallback {
-    void onDone();
+    mapboxNavigation.setLocationEngine(locationEngine);
+    locationComponent.setLocationEngine(locationEngine);
   }
 }

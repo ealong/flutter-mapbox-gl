@@ -85,10 +85,16 @@ class MethodChannelMapboxGl extends MapboxGlPlatform {
         onOffRoutePlatform(null);
         break;
       case 'navigation#onNavigationProgressChange':
+        final DirectionsRoute directionsRoute =
+            DirectionsRoute.fromJson(
+                json.decode(call.arguments['directionsRoute']));
+        final double durationRemaining = call.arguments['durationRemaining'];
         final double distanceRemaining = call.arguments['distanceRemaining'];
         final LegStep upComingStep =
             LegStep.fromJson(json.decode(call.arguments['upComingStep']));
         onNavigationProgressChangePlatform({
+          'directionsRoute': directionsRoute,
+          'durationRemaining': durationRemaining,
           'distanceRemaining': distanceRemaining,
           'upComingStep': upComingStep,
         });

@@ -20,8 +20,8 @@ typedef void OnMapIdleCallback();
 
 typedef void OnNavigationCallback(bool running);
 
-typedef void OnNavigationProgressChangeCallback(
-    double distanceRemaining, LegStep upComingStep);
+typedef void OnNavigationProgressChangeCallback(DirectionsRoute directionsRoute,
+    double durationRemaining, double distanceRemaining, LegStep upComingStep);
 
 typedef void OnOffRouteCallback();
 
@@ -174,8 +174,9 @@ class MapboxMapController extends ChangeNotifier {
         .onNavigationProgressChangePlatform
         .add((dict) {
       if (onNavigationProgressChange != null) {
-        onNavigationProgressChange(
-            dict['distanceRemaining'], dict['upComingStep']);
+        onNavigationProgressChange(dict['directionsRoute'],
+            dict['durationRemaining'], dict['distanceRemaining'],
+            dict['upComingStep']);
       }
     });
 
