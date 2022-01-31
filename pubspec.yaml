@@ -7,9 +7,11 @@ dependencies:
   flutter:
     sdk: flutter
   mapbox_gl_platform_interface:
-      path: ./mapbox_gl_platform_interface
+      url: https://github.com/tobrun/flutter-mapbox-gl.git
+      path: mapbox_gl_platform_interface
   mapbox_gl_web:
-      path: ./mapbox_gl_web
+      url: https://github.com/tobrun/flutter-mapbox-gl.git
+      path: mapbox_gl_web
 
 flutter:
   plugin:
